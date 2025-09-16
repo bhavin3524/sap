@@ -6,7 +6,6 @@ import com.sap.utility.AppConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -18,41 +17,42 @@ import java.util.Set;
 @SpringBootApplication
 public class SapApplication implements CommandLineRunner {
 
+    private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
     @Autowired
     private Co2CalculatorService co2Service;
 
-    private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
-
     public static void main(String[] args) {
         SpringApplication app = new SpringApplication(SapApplication.class);
-        app.setWebApplicationType(WebApplicationType.NONE);
+        app.setWebApplicationType(WebApplicationType.NONE); // CLI mode
         app.run(args);
     }
 
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         Co2CalculateRequestDTO request = parseArgs(args);
 
-        // Validate request
-        Set<ConstraintViolation<Co2CalculateRequestDTO>> violations = validator.validate(request);
-        if (!violations.isEmpty()) {
-            violations.forEach(v -> System.err.println(v.getMessage()));
-            System.err.println("Usage: --start <City> --end <City> --transportation-method <method>");
+        if (!validateRequest(request)) {
+            printUsage();
             return;
         }
 
-        double distanceKm = co2Service.getDistanceKm(request.getStart(), request.getEnd());
-        double co2Kg = co2Service.calculateCo2Kg(distanceKm, request.getTransportationMethod());
+        try {
+            double distanceKm = co2Service.getDistanceKm(request.getStart(), request.getEnd());
+            double co2Kg = co2Service.calculateCo2Kg(distanceKm, request.getTransportationMethod());
 
-        System.out.printf("Your trip caused %.1fkg of CO2-equivalent.%n", co2Kg);
+            System.out.printf("Your trip caused %.1f kg of CO2-equivalent.%n", co2Kg);
+        } catch (Exception e) {
+            System.err.println("Error calculating CO2: " + e.getMessage());
+        }
     }
+
 
     private Co2CalculateRequestDTO parseArgs(String[] args) {
         Co2CalculateRequestDTO request = new Co2CalculateRequestDTO();
+
         for (int i = 0; i < args.length; i++) {
-            String[] parts = args[i].split("=", 2);
-            String key = parts[0].replace("--", StringUtils.EMPTY).trim();
-            String value = parts.length > 1 ? parts[1] : (i + 1 < args.length ? args[i + 1] : null);
+            String key = args[i].replace("--", "").trim();
+            String value = (i + 1 < args.length && !args[i + 1].startsWith("--")) ? args[++i] : null;
 
             switch (key) {
                 case AppConstants.START -> request.setStart(value);
@@ -60,7 +60,25 @@ public class SapApplication implements CommandLineRunner {
                 case AppConstants.TRANSPORTATION_METHOD -> request.setTransportationMethod(value);
             }
         }
+
         return request;
     }
 
+
+    private boolean validateRequest(Co2CalculateRequestDTO request) {
+        Set<ConstraintViolation<Co2CalculateRequestDTO>> violations = validator.validate(request);
+
+        if (!violations.isEmpty()) {
+            violations.forEach(v -> System.err.println(v.getMessage()));
+            return false;
+        }
+
+        return true;
+    }
+
+
+    private void printUsage() {
+        System.err.println("Usage: --start <City> --end <City> --transportation-method <method>");
+        System.err.println("Example: --start Berlin --end Hamburg --transportation-method diesel-car-small");
+    }
 }

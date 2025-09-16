@@ -16,6 +16,7 @@ public interface AppConstants {
         String ELECTRIC_CAR_LARGE = "electric-car-large";
         String BUS_DEFAULT = "bus-default";
         String TRAIN_DEFAULT = "train-default";
+        String UNKNOWN_TRANSPORT = "unknown-transport";
 
         String START = "start";
         String END = "end";

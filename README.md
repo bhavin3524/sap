@@ -4,7 +4,7 @@ This is a command-line tool written in Java (Spring Boot) to calculate CO2-equiv
 
 ## Prerequisites
 
-- Java 17+
+- Java 17
 - Maven
 - [OpenRouteService API token](https://openrouteservice.org/dev/#/signup)
 
