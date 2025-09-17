@@ -32,11 +32,7 @@ import static org.mockito.Mockito.when;
 //@Disabled("Temporarily disabling all tests in this class")  // Remove this annotation for execute all test cases
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
-@TestPropertySource(properties = {
-        "OPEN_ROUTE_API_GEOCODE=https://api.openrouteservice.org/geocode/search",
-        "OPEN_ROUTE_API_MATRIX=https://api.openrouteservice.org/v2/matrix/driving-car",
-        "ORS_TOKEN=5b3ce3597851110001cf624822f9170a3be2483e8681d85f65f928ce"
-})
+@TestPropertySource("classpath:application-test.properties")
 @MockitoSettings(strictness = Strictness.LENIENT)
 class Co2CalculatorIntegrationTest {
 

@@ -22,6 +22,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
@@ -37,6 +38,7 @@ import static org.mockito.Mockito.*;
 //@Disabled("Temporarily disabling all tests in this class")
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
+@TestPropertySource("classpath:application-test.properties")
 class Co2CalculatorServiceImplTest {
 
     @Mock
