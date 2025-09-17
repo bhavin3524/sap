@@ -38,9 +38,10 @@ mvn clean package -DskipTests
 
 java -jar target/sap-0.0.1-SNAPSHOT.jar --start "Hamburg" --end "Frankfurt" --transportation-method diesel-car-medium
 
-Notes:
-•	Parameters can be passed using either spaces or =.
-•	Cities with spaces must be quoted.
+### Notes
+- Parameters can be passed using either spaces or `=`.
+- Cities with spaces must be quoted.
+- And no route found between the two cities getting 0 output.
 
 ⸻
 
@@ -108,9 +109,6 @@ Detailed error messages with city names.
 
 ⸻
 
-
-
-🧪 Test
 
 mvn test
 
