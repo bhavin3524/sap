@@ -28,12 +28,13 @@ ORS_TOKEN=your_token_here
 
 Build
 
+mvn clean clean
 mvn clean package
+mvn clean package -DskipTests
 
 
 ⸻
 
-▶️ Run
 
 java -jar target/sap-0.0.1-SNAPSHOT.jar --start "Hamburg" --end "Frankfurt" --transportation-method diesel-car-medium
 
@@ -55,7 +56,7 @@ Your trip caused 320.4kg of CO2-equivalent.
 
 ⸻
 
-🚍 Supported Transportation Methods
+Supported Transportation Methods
 
 The allowed transportation methods are defined in **TransportMethod.java** (per requirement specification).
 If you want to add a new method, update this file.
