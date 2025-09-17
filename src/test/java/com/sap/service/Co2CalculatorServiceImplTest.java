@@ -1,14 +1,15 @@
 package com.sap.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sap.exception.BadRequestException;
 import com.sap.exception.CityNotFoundException;
 import com.sap.exception.ForbiddenException;
 import com.sap.exception.InternalServerErrorException;
 import com.sap.exception.NetworkException;
+import com.sap.exception.UnknownTransportMethodException;
 import com.sap.service.impl.Co2CalculatorServiceImpl;
 import com.sap.utility.AppConstants;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -32,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+
+//@Disabled("Temporarily disabling all tests in this class")
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
 class Co2CalculatorServiceImplTest {
@@ -82,7 +85,7 @@ class Co2CalculatorServiceImplTest {
 
     @Test
     void testCalculateCo2Kg_unknownTransport() {
-        assertThrows(BadRequestException.class,
+        assertThrows(UnknownTransportMethodException.class,
                 () -> service.calculateCo2Kg(10, AppConstants.UNKNOWN_TRANSPORT));
     }
 

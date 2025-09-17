@@ -7,10 +7,12 @@ import com.sap.exception.CityNotFoundException;
 import com.sap.exception.ForbiddenException;
 import com.sap.exception.InternalServerErrorException;
 import com.sap.exception.NetworkException;
+import com.sap.exception.UnknownTransportMethodException;
 import com.sap.model.TransportMethod;
 import com.sap.model.dto.MatrixRequest;
 import com.sap.service.Co2CalculatorService;
 import com.sap.utility.AppConstants;
+import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -29,6 +31,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.List;
 import java.util.Locale;
 
+@Getter
 @Service
 public class Co2CalculatorServiceImpl implements Co2CalculatorService {
 
@@ -69,79 +72,77 @@ public class Co2CalculatorServiceImpl implements Co2CalculatorService {
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
             ResponseEntity<String> response = restTemplate.exchange(MATRIX_API, HttpMethod.POST, entity, String.class);
 
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new BadRequestException(buildErrorMessage(
-                        "matrix.client", cityStart, cityEnd, response.getStatusCode(), response.getBody()));
+            if (response.getBody() == null) {
+                throw new InternalServerErrorException(buildErrorMessage("matrix.empty.body", cityStart, cityEnd));
             }
 
             JsonNode res = mapper.readTree(response.getBody());
             JsonNode distances = res.get(AppConstants.DISTANCES);
 
-            if (distances == null || distances.get(0) == null || distances.get(0).get(1) == null) {
-                throw new InternalServerErrorException(buildErrorMessage("matrix.empty", cityStart, cityEnd));
+            if (distances == null || !distances.isArray() || distances.isEmpty() || distances.get(0).size() < 2) {
+                throw new InternalServerErrorException(buildErrorMessage("matrix.empty.data", cityStart, cityEnd));
             }
 
             return distances.get(0).get(1).asDouble() / 1000.0;
 
         } catch (RestClientResponseException e) {
             handleMatrixException(cityStart, cityEnd, e);
-            throw new IllegalStateException("Unreachable code after handleMatrixException");
+            return 0;
         } catch (ResourceAccessException e) {
             throw new NetworkException(buildErrorMessage("matrix.network", cityStart, cityEnd, e.getMessage()), e);
         } catch (Exception e) {
-            throw new InternalServerErrorException(buildErrorMessage("matrix.server", cityStart, cityEnd, e.getMessage()));
+            throw new InternalServerErrorException(buildErrorMessage("matrix.server.generic", cityStart, cityEnd, e.getMessage()));
         }
     }
+
 
     @Override
     public double calculateCo2Kg(double distanceKm, String transportMethod) {
         Integer rate = TransportMethod.getEmissionRate(transportMethod);
         if (rate == null) {
-            throw new BadRequestException(buildErrorMessage("transport.unknown", transportMethod));
+            throw new UnknownTransportMethodException(buildErrorMessage("transport.unknown", transportMethod));
         }
         return Math.round((distanceKm * rate / 1000.0) * 10.0) / 10.0;
     }
 
     public double[] getCoordinates(String city) {
-
         if (StringUtils.isBlank(city)) {
-            throw new BadRequestException(buildErrorMessage("city.blank", city));
+            throw new BadRequestException(buildErrorMessage("city.blank"));
         }
 
         try {
-
             String url = GEO_CODE_API + "?api_key=" + ORS_TOKEN + "&text=" + city + "&layers=locality";
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new BadRequestException(buildErrorMessage("geo.client", city,
-                        response.getStatusCode(), response.getBody()));
+            if (response.getBody() == null) {
+                throw new InternalServerErrorException(buildErrorMessage("geo.empty.body", city));
             }
 
             JsonNode root = mapper.readTree(response.getBody());
             JsonNode features = root.get(AppConstants.FEATURES);
 
-            if (features == null || features.isEmpty()) {
+            if (features == null || !features.isArray() || features.isEmpty()) {
                 throw new CityNotFoundException(buildErrorMessage("geo.notfound", city));
             }
 
             JsonNode geometry = features.get(0).get(AppConstants.GEOMETRY);
-            if (geometry == null || geometry.get(AppConstants.COORDINATES) == null || geometry.get(AppConstants.COORDINATES).size() < 2) {
-                throw new InternalServerErrorException(buildErrorMessage("geo.invalid", city));
+            JsonNode coords = (geometry != null) ? geometry.get(AppConstants.COORDINATES) : null;
+
+            if (coords == null || !coords.isArray() || coords.size() < 2) {
+                throw new InternalServerErrorException(buildErrorMessage("geo.invalid.coords", city));
             }
 
-            JsonNode coords = geometry.get(AppConstants.COORDINATES);
             return new double[]{coords.get(0).asDouble(), coords.get(1).asDouble()};
 
         } catch (CityNotFoundException e) {
-            throw e; // do not wrap business exception
+            throw e;
         } catch (RestClientResponseException e) {
             handleGeoException(city, e);
-            throw new IllegalStateException("Unreachable code after handleGeoException");
+            return null;
         } catch (ResourceAccessException e) {
             throw new NetworkException(buildErrorMessage("geo.network", city, e.getMessage()), e);
         } catch (Exception e) {
-            throw new InternalServerErrorException(buildErrorMessage("geo.server", city, e.getMessage()));
+            throw new InternalServerErrorException(buildErrorMessage("geo.server.generic", city, e.getMessage()));
         }
     }
 
@@ -157,11 +158,9 @@ public class Co2CalculatorServiceImpl implements Co2CalculatorService {
         if (statusCode.isSameCodeAs(HttpStatus.FORBIDDEN)) {
             throw new ForbiddenException(buildErrorMessage("geo.forbidden", city, e.getResponseBodyAsString()));
         } else if (statusCode.is4xxClientError()) {
-            throw new BadRequestException(buildErrorMessage("geo.client", city, statusCode.value(), e.getResponseBodyAsString()));
-        } else if (statusCode.is5xxServerError()) {
-            throw new InternalServerErrorException(buildErrorMessage("geo.server", city, statusCode.value(), e.getResponseBodyAsString()));
+            throw new BadRequestException(buildErrorMessage("geo.client.error", city, statusCode.value(), e.getResponseBodyAsString()));
         } else {
-            throw new BadRequestException(buildErrorMessage("geo.client", city, statusCode.value(), e.getResponseBodyAsString()));
+            throw new InternalServerErrorException(buildErrorMessage("geo.server.error", city, statusCode.value(), e.getResponseBodyAsString()));
         }
     }
 
@@ -170,11 +169,10 @@ public class Co2CalculatorServiceImpl implements Co2CalculatorService {
         if (statusCode.isSameCodeAs(HttpStatus.FORBIDDEN)) {
             throw new ForbiddenException(buildErrorMessage("matrix.forbidden", cityStart, cityEnd, e.getResponseBodyAsString()));
         } else if (statusCode.is4xxClientError()) {
-            throw new BadRequestException(buildErrorMessage("matrix.client", cityStart, cityEnd, statusCode.value(), e.getResponseBodyAsString()));
-        } else if (statusCode.is5xxServerError()) {
-            throw new InternalServerErrorException(buildErrorMessage("matrix.server", cityStart, cityEnd, statusCode.value(), e.getResponseBodyAsString()));
+            throw new BadRequestException(buildErrorMessage("matrix.client.error", cityStart, cityEnd, statusCode.value(), e.getResponseBodyAsString()));
         } else {
-            throw new BadRequestException(buildErrorMessage("matrix.client", cityStart, cityEnd, statusCode.value(), e.getResponseBodyAsString()));
+            throw new InternalServerErrorException(buildErrorMessage("matrix.server.error", cityStart, cityEnd, statusCode.value(), e.getResponseBodyAsString()));
         }
     }
+
 }

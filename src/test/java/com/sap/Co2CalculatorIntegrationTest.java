@@ -2,12 +2,12 @@ package com.sap;
 
 import com.sap.exception.BadRequestException;
 import com.sap.exception.CityNotFoundException;
-import com.sap.exception.ForbiddenException;
 import com.sap.exception.UnknownTransportMethodException;
 import com.sap.model.dto.Co2CalculateRequestDTO;
 import com.sap.service.Co2CalculatorService;
 import com.sap.utility.AppConstants;
 import org.apache.commons.lang3.StringUtils;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -18,20 +18,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
-
-import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
+
+//@Disabled("Temporarily disabling all tests in this class")  // Remove this annotation for execute all test cases
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
 @TestPropertySource(properties = {
@@ -95,6 +93,45 @@ class Co2CalculatorIntegrationTest {
     }
 
     @Test
+    void testRouteNotFound() throws Exception {
+        setupMessageSource();
+
+        String geoBody = """
+                {
+                  "features":[{"geometry":{"coordinates":[13.4,52.5]}}]
+                }
+                """;
+
+        when(restTemplate.getForEntity(contains("Ahmedabad"), eq(String.class)))
+                .thenReturn(ResponseEntity.ok(geoBody));
+        when(restTemplate.getForEntity(contains("Florida"), eq(String.class)))
+                .thenReturn(ResponseEntity.ok(geoBody));
+
+        String matrixBody = """
+                {
+                  "distances": [[0, null], [null, 0]]
+                }
+                """;
+
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(ResponseEntity.ok(matrixBody));
+
+        Co2CalculateRequestDTO request = new Co2CalculateRequestDTO();
+        request.setStart("Ahmedabad");
+        request.setEnd("Florida");
+        request.setTransportationMethod(AppConstants.DIESEL_CAR_SMALL);
+
+        double distanceKm = co2Service.getDistanceKm(request.getStart(), request.getEnd());
+        double co2 = co2Service.calculateCo2Kg(distanceKm, request.getTransportationMethod());
+
+        System.out.printf("Distance: %.2f km, CO2: %.2f kg%n", distanceKm, co2);
+
+        assertEquals(0, distanceKm);
+        assertEquals(0, co2);
+    }
+
+
+    @Test
     void testInvalidTransportMethod() {
         setupMessageSource();
         assertThrows(UnknownTransportMethodException.class,
@@ -110,19 +147,6 @@ class Co2CalculatorIntegrationTest {
 
         assertThrows(CityNotFoundException.class,
                 () -> co2Service.getDistanceKm("UnknownCity", "UnknownCity"));
-    }
-
-    @Test
-    void testForbiddenException() {
-        setupMessageSource();
-        RestClientResponseException ex = new RestClientResponseException(
-                "Forbidden", 403, "Forbidden", new HttpHeaders(),
-                "{\"error\":\"Access denied\"}".getBytes(), StandardCharsets.UTF_8);
-
-        when(restTemplate.getForEntity(anyString(), eq(String.class))).thenThrow(ex);
-
-        assertThrows(ForbiddenException.class,
-                () -> co2Service.getDistanceKm("Berlin", "Munich"));
     }
 
     @Test

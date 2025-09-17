@@ -18,12 +18,13 @@ import java.util.Set;
 public class SapApplication implements CommandLineRunner {
 
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+
     @Autowired
     private Co2CalculatorService co2Service;
 
     public static void main(String[] args) {
         SpringApplication app = new SpringApplication(SapApplication.class);
-        app.setWebApplicationType(WebApplicationType.NONE); // CLI mode
+        app.setWebApplicationType(WebApplicationType.NONE);
         app.run(args);
     }
 

@@ -1,80 +1,117 @@
-# CO2 Emission Calculator
 
-This is a command-line tool written in Java (Spring Boot) to calculate CO2-equivalent emissions for travel between two cities using a specific transportation method.
+CO₂ Emission Calculator
 
-## Prerequisites
+A command-line application built with Java 17 and Spring Boot that calculates CO₂-equivalent emissions for trips between two cities, based on the chosen transportation method.
+It integrates with the OpenRouteService API for distance calculation.
 
-- Java 17
-- Maven
-- [OpenRouteService API token](https://openrouteservice.org/dev/#/signup)
+⸻
 
-## Setup
+Prerequisites
+•	Java 17
+•	Maven 3.8+
+•	OpenRouteService API Token
 
-1. Clone the repository.
-2. Set the environment variable `ORS_TOKEN` with your API token.
+⸻
 
-### Linux/macOS
+Setup
+1.	Clone the repository.
+2.	Configure your OpenRouteService API Token in both configuration files:
+•	src/main/resources/application.properties
+•	src/test/resources/application-test.properties
 
-```sh
-export ORS_TOKEN=your_token_here
-```
+such as 
 
-### Windows
+ORS_TOKEN=your_token_here
 
-```cmd
-set ORS_TOKEN=your_token_here
-```
 
-## Build
+⸻
 
-```sh
+Build
+
 mvn clean package
-```
 
-## Run
 
-```sh
-java -jar target/co2-calculator-1.0.0.jar --start Hamburg --end Berlin --transportation-method diesel-car-medium
-```
+⸻
 
-- You can use space or `=` between parameters.
-- Cities with spaces should be quoted.
+▶️ Run
 
-## Example
+java -jar target/sap-0.0.1-SNAPSHOT.jar --start "Hamburg" --end "Frankfurt" --transportation-method diesel-car-medium
 
-```sh
-java -jar target/co2-calculator-1.0.0.jar --start "Los Angeles" --end "New York" --transportation-method=electric-car-large
-```
+Notes:
+•	Parameters can be passed using either spaces or =.
+•	Cities with spaces must be quoted.
 
-## Test
+⸻
 
-```sh
+Example Usage
+
+Run the application with your desired cities and transportation method:
+
+java -jar target/sap-0.0.1-SNAPSHOT.jar --start "Hamburg" --end "Frankfurt" --transportation-method diesel-car-medium
+
+Sample Output
+
+Your trip caused 320.4kg of CO2-equivalent.
+
+⸻
+
+🚍 Supported Transportation Methods
+
+The allowed transportation methods are defined in **TransportMethod.java** (per requirement specification).
+If you want to add a new method, update this file.
+
+Currently Supported Transportation Methods
+•	diesel-car-small
+•	petrol-car-small
+•	plugin-hybrid-car-small
+•	electric-car-small
+•	diesel-car-medium
+•	petrol-car-medium
+•	plugin-hybrid-car-medium
+•	electric-car-medium
+•	diesel-car-large
+•	petrol-car-large
+•	plugin-hybrid-car-large
+•	electric-car-large
+•	bus-default
+
+⸻
+
+
+
+⸻
+
+Error Handling
+
+The application validates inputs and provides clear error messages for:
+•	Missing parameters
+
+Usage: --start <City> --end <City> --transportation-method <method>
+
+
+	•	Blank city names
+
+City name must not be blank.
+
+
+	•	Unsupported transportation methods
+
+Unknown transportation method: xyz-method
+
+
+	•	API failures (403, 5xx, network issues)
+
+Detailed error messages with city names.
+
+
+
+⸻
+
+
+
+🧪 Test
+
 mvn test
-```
 
-## Supported Transportation Methods
 
-- diesel-car-small
-- petrol-car-small
-- plugin-hybrid-car-small
-- electric-car-small
-- diesel-car-medium
-- petrol-car-medium
-- plugin-hybrid-car-medium
-- electric-car-medium
-- diesel-car-large
-- petrol-car-large
-- plugin-hybrid-car-large
-- electric-car-large
-- bus-default
-- train-default
 
-## Error Handling
-
-- Invalid or missing parameters
-- Unknown transportation method
-- API failures
-
-## License
-
-MIT
