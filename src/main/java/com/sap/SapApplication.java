@@ -30,6 +30,11 @@ public class SapApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+
+        if (args == null || args.length == 0) {
+            return;
+        }
+
         Co2CalculateRequestDTO request = parseArgs(args);
 
         if (!validateRequest(request)) {
